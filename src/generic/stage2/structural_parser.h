@@ -330,10 +330,10 @@ struct structural_parser : structural_iterator {
     parser.current_loc = 0;
   }
 
-  WARN_UNUSED really_inline error_code start(size_t _len, ret_address finish_state) {
+  WARN_UNUSED really_inline error_code start(ret_address finish_state) {
     log_start();
     init(); // sets is_valid to false
-    if (_len > parser.capacity()) {
+    if (parser.len > parser.capacity()) {
       return CAPACITY;
     }
     // Advance to the first character as soon as possible
@@ -382,7 +382,7 @@ WARN_UNUSED error_code dom_parser_implementation::stage2(dom::document &_doc) no
   this->doc = &_doc;
   static constexpr stage2::unified_machine_addresses addresses = INIT_ADDRESSES();
   stage2::structural_parser parser(*this);
-  error_code result = parser.start(len, addresses.finish);
+  error_code result = parser.start(addresses.finish);
   if (result) { return result; }
 
   //

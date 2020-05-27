@@ -4,7 +4,7 @@ struct streaming_structural_parser: structural_parser {
   really_inline streaming_structural_parser(dom_parser_implementation &_parser, uint32_t _next_structural) : structural_parser(_parser, _next_structural) {}
 
   // override to add streaming
-  WARN_UNUSED really_inline error_code start(UNUSED size_t _len, ret_address finish_parser) {
+  WARN_UNUSED really_inline error_code start(ret_address finish_parser) {
     log_start();
     init(); // sets is_valid to false
     // Capacity ain't no thang for streaming, so we don't check it.
@@ -50,7 +50,7 @@ WARN_UNUSED error_code dom_parser_implementation::stage2(const uint8_t *_buf, si
   this->doc = &_doc;
   static constexpr stage2::unified_machine_addresses addresses = INIT_ADDRESSES();
   stage2::streaming_structural_parser parser(*this, uint32_t(next_json));
-  error_code result = parser.start(len, addresses.finish);
+  error_code result = parser.start(addresses.finish);
   if (result) { return result; }
   //
   // Read first value

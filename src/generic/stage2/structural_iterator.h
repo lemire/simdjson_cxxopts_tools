@@ -4,11 +4,10 @@ class structural_iterator {
 public:
   really_inline structural_iterator(dom_parser_implementation &_parser, size_t next_structural_index)
     : buf{_parser.buf},
-     len{_parser.len},
-     structural_indexes{_parser.structural_indexes.get()},
-     next_structural{next_structural_index},
-     parser{_parser}
-    {}
+      structural_indexes{_parser.structural_indexes.get()},
+      next_structural{next_structural_index},
+      parser{_parser} {
+  }
   really_inline char advance_char() {
     idx = structural_indexes[next_structural];
     next_structural++;
@@ -25,14 +24,14 @@ public:
     return &buf[idx];
   }
   really_inline size_t remaining_len() {
-    return len - idx;
+    return parser.len - idx;
   }
   template<typename F>
   really_inline bool with_space_terminated_copy(const F& f) {
     /**
     * We need to make a copy to make sure that the string is space terminated.
     * This is not about padding the input, which should already padded up
-    * to len + SIMDJSON_PADDING. However, we have no control at this stage
+    * to parser.len + SIMDJSON_PADDING. However, we have no control at this stage
     * on how the padding was done. What if the input string was padded with nulls?
     * It is quite common for an input string to have an extra null character (C string).
     * We do not want to allow 9\0 (where \0 is the null character) inside a JSON
@@ -42,12 +41,12 @@ public:
     * practice unless you are in the strange scenario where you have many JSON
     * documents made of single atoms.
     */
-    char *copy = static_cast<char *>(malloc(len + SIMDJSON_PADDING));
+    char *copy = static_cast<char *>(malloc(parser.len + SIMDJSON_PADDING));
     if (copy == nullptr) {
       return true;
     }
-    memcpy(copy, buf, len);
-    memset(copy + len, ' ', SIMDJSON_PADDING);
+    memcpy(copy, buf, parser.len);
+    memset(copy + parser.len, ' ', SIMDJSON_PADDING);
     bool result = f(reinterpret_cast<const uint8_t*>(copy), idx);
     free(copy);
     return result;
@@ -66,7 +65,6 @@ public:
   }
 
   const uint8_t* const buf;
-  const size_t len;
   const uint32_t* const structural_indexes;
   size_t next_structural; // next structural index
   size_t idx{0}; // location of the structural character in the input (buf)
