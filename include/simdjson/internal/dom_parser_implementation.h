@@ -130,12 +130,6 @@ public:
   /** Structural indices passed from stage 1 to stage 2 */
   std::unique_ptr<uint32_t[]> structural_indexes{};
 
-  /** Tape location of each open { or [ */
-  std::unique_ptr<internal::scope_descriptor[]> containing_scope{};
-
-  /** Return address of each open { or [ */
-  std::unique_ptr<internal::ret_address[]> ret_address{};
-
   /**
    * The largest document this parser can support without reallocating.
    *
