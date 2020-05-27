@@ -2,10 +2,10 @@ namespace stage2 {
 
 class structural_iterator {
 public:
-  really_inline structural_iterator(const uint8_t* _buf, size_t _len, const uint32_t *_structural_indexes, size_t next_structural_index, dom_parser_implementation &_parser)
-    : buf{_buf},
-     len{_len},
-     structural_indexes{_structural_indexes},
+  really_inline structural_iterator(dom_parser_implementation &_parser, size_t next_structural_index)
+    : buf{_parser.buf},
+     len{_parser.len},
+     structural_indexes{_parser.structural_indexes.get()},
      next_structural{next_structural_index},
      parser{_parser}
     {}
