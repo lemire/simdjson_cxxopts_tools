@@ -156,6 +156,8 @@ really_inline void json_structural_indexer::step<64>(const uint8_t *block, buf_b
 // you may want to call on a function like trimmed_length_safe_utf8.
 template<size_t STEP_SIZE>
 error_code json_structural_indexer::index(const uint8_t *buf, size_t len, dom_parser_implementation &parser, bool streaming) noexcept {
+  parser.buf = buf;
+  parser.len = len;
   if (unlikely(len > parser.capacity())) { return CAPACITY; }
 
   buf_block_reader<STEP_SIZE> reader(buf, len);
