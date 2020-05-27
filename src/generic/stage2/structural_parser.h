@@ -71,7 +71,6 @@ struct number_writer {
 }; // struct number_writer
 
 struct structural_parser : structural_iterator {
-  dom_parser_implementation &parser;
   /** Next write location in the string buf for stage 2 parsing */
   uint8_t *current_string_buf_loc{};
   uint32_t depth;
@@ -79,7 +78,7 @@ struct structural_parser : structural_iterator {
   really_inline structural_parser(
     dom_parser_implementation &_parser,
     uint32_t _next_structural = 0
-  ) : structural_iterator(_parser.buf, _parser.len, _parser.structural_indexes.get(), _next_structural), parser{_parser}, depth{0} {}
+  ) : structural_iterator(_parser.buf, _parser.len, _parser.structural_indexes.get(), _next_structural, _parser), depth{0} {}
 
   WARN_UNUSED really_inline bool start_scope(ret_address continue_state) {
     parser.containing_scope[depth].tape_index = parser.current_loc;
