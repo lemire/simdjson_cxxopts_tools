@@ -1,10 +1,10 @@
 namespace stage2 {
 
 struct streaming_structural_parser: structural_parser {
-  really_inline streaming_structural_parser(dom_parser_implementation &_parser, uint32_t next_structural) : structural_parser(_parser, next_structural) {}
+  really_inline streaming_structural_parser(dom_parser_implementation &_parser, uint32_t _next_structural) : structural_parser(_parser, _next_structural) {}
 
   // override to add streaming
-  WARN_UNUSED really_inline error_code start(UNUSED size_t len, ret_address finish_parser) {
+  WARN_UNUSED really_inline error_code start(UNUSED size_t _len, ret_address finish_parser) {
     log_start();
     init(); // sets is_valid to false
     // Capacity ain't no thang for streaming, so we don't check it.
@@ -19,7 +19,7 @@ struct streaming_structural_parser: structural_parser {
 
   // override to add streaming
   WARN_UNUSED really_inline error_code finish() {
-    if ( structurals.past_end(parser.n_structural_indexes) ) {
+    if ( past_end(parser.n_structural_indexes) ) {
       log_error("IMPOSSIBLE: past the end of the JSON!");
       return TAPE_ERROR;
     }
@@ -32,7 +32,7 @@ struct streaming_structural_parser: structural_parser {
       log_error("IMPOSSIBLE: root scope tape index did not start at 0!");
       return TAPE_ERROR;
     }
-    bool finished = structurals.at_end(parser.n_structural_indexes);
+    bool finished = at_end(parser.n_structural_indexes);
     if (!finished) { log_value("(and has more)"); }
     return finished ? SUCCESS : SUCCESS_AND_HAS_MORE;
   }
@@ -55,7 +55,7 @@ WARN_UNUSED error_code dom_parser_implementation::stage2(const uint8_t *_buf, si
   //
   // Read first value
   //
-  switch (parser.structurals.current_char()) {
+  switch (parser.current_char()) {
   case '{':
     FAIL_IF( parser.start_object(addresses.finish) );
     goto object_begin;
@@ -71,14 +71,14 @@ WARN_UNUSED error_code dom_parser_implementation::stage2(const uint8_t *_buf, si
   case '0': case '1': case '2': case '3': case '4':
   case '5': case '6': case '7': case '8': case '9':
     FAIL_IF(
-      parser.structurals.with_space_terminated_copy([&](const uint8_t *copy, size_t idx) {
+      parser.with_space_terminated_copy([&](const uint8_t *copy, size_t idx) {
         return parser.parse_number(&copy[idx], false);
       })
     );
     goto finish;
   case '-':
     FAIL_IF(
-      parser.structurals.with_space_terminated_copy([&](const uint8_t *copy, size_t idx) {
+      parser.with_space_terminated_copy([&](const uint8_t *copy, size_t idx) {
         return parser.parse_number(&copy[idx], true);
       })
     );
@@ -158,7 +158,7 @@ array_continue:
   }
 
 finish:
-  next_json = parser.structurals.next_structural_index();
+  next_json = parser.next_structural_index();
   return parser.finish();
 
 error:

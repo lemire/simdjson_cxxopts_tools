@@ -70,8 +70,7 @@ struct number_writer {
   }
 }; // struct number_writer
 
-struct structural_parser {
-  structural_iterator structurals;
+struct structural_parser : structural_iterator {
   dom_parser_implementation &parser;
   /** Next write location in the string buf for stage 2 parsing */
   uint8_t *current_string_buf_loc{};
@@ -79,8 +78,8 @@ struct structural_parser {
 
   really_inline structural_parser(
     dom_parser_implementation &_parser,
-    uint32_t next_structural = 0
-  ) : structurals(_parser.buf, _parser.len, _parser.structural_indexes.get(), next_structural), parser{_parser}, depth{0} {}
+    uint32_t _next_structural = 0
+  ) : structural_iterator(_parser.buf, _parser.len, _parser.structural_indexes.get(), _next_structural), parser{_parser}, depth{0} {}
 
   WARN_UNUSED really_inline bool start_scope(ret_address continue_state) {
     parser.containing_scope[depth].tape_index = parser.current_loc;
@@ -173,7 +172,7 @@ struct structural_parser {
   WARN_UNUSED really_inline bool parse_string(bool key = false) {
     log_value(key ? "key" : "string");
     uint8_t *dst = on_start_string();
-    dst = stringparsing::parse_string(structurals.current(), dst);
+    dst = stringparsing::parse_string(current(), dst);
     if (dst == nullptr) {
       log_error("Invalid escape in string");
       return true;
@@ -190,24 +189,24 @@ struct structural_parser {
     return !succeeded;
   }
   WARN_UNUSED really_inline bool parse_number(bool found_minus) {
-    return parse_number(structurals.current(), found_minus);
+    return parse_number(current(), found_minus);
   }
 
   WARN_UNUSED really_inline bool parse_atom() {
-    switch (structurals.current_char()) {
+    switch (current_char()) {
       case 't':
         log_value("true");
-        if (!atomparsing::is_valid_true_atom(structurals.current())) { return true; }
+        if (!atomparsing::is_valid_true_atom(current())) { return true; }
         append_tape(0, internal::tape_type::TRUE_VALUE);
         break;
       case 'f':
         log_value("false");
-        if (!atomparsing::is_valid_false_atom(structurals.current())) { return true; }
+        if (!atomparsing::is_valid_false_atom(current())) { return true; }
         append_tape(0, internal::tape_type::FALSE_VALUE);
         break;
       case 'n':
         log_value("null");
-        if (!atomparsing::is_valid_null_atom(structurals.current())) { return true; }
+        if (!atomparsing::is_valid_null_atom(current())) { return true; }
         append_tape(0, internal::tape_type::NULL_VALUE);
         break;
       default:
@@ -218,20 +217,20 @@ struct structural_parser {
   }
 
   WARN_UNUSED really_inline bool parse_single_atom() {
-    switch (structurals.current_char()) {
+    switch (current_char()) {
       case 't':
         log_value("true");
-        if (!atomparsing::is_valid_true_atom(structurals.current(), structurals.remaining_len())) { return true; }
+        if (!atomparsing::is_valid_true_atom(current(), remaining_len())) { return true; }
         append_tape(0, internal::tape_type::TRUE_VALUE);
         break;
       case 'f':
         log_value("false");
-        if (!atomparsing::is_valid_false_atom(structurals.current(), structurals.remaining_len())) { return true; }
+        if (!atomparsing::is_valid_false_atom(current(), remaining_len())) { return true; }
         append_tape(0, internal::tape_type::FALSE_VALUE);
         break;
       case 'n':
         log_value("null");
-        if (!atomparsing::is_valid_null_atom(structurals.current(), structurals.remaining_len())) { return true; }
+        if (!atomparsing::is_valid_null_atom(current(), remaining_len())) { return true; }
         append_tape(0, internal::tape_type::NULL_VALUE);
         break;
       default:
@@ -242,7 +241,7 @@ struct structural_parser {
   }
 
   WARN_UNUSED really_inline ret_address parse_value(const unified_machine_addresses &addresses, ret_address continue_state) {
-    switch (structurals.current_char()) {
+    switch (current_char()) {
     case '"':
       FAIL_IF( parse_string() );
       return continue_state;
@@ -270,7 +269,7 @@ struct structural_parser {
 
   WARN_UNUSED really_inline error_code finish() {
     // the string might not be NULL terminated.
-    if ( !structurals.at_end(parser.n_structural_indexes) ) {
+    if ( !at_end(parser.n_structural_indexes) ) {
       log_error("More than one JSON value at the root of the document, or extra characters at the end of the JSON!");
       return TAPE_ERROR;
     }
@@ -301,7 +300,7 @@ struct structural_parser {
     if (depth >= parser.max_depth()) {
       return DEPTH_ERROR;
     }
-    switch (structurals.current_char()) {
+    switch (current_char()) {
     case '"':
       return STRING_ERROR;
     case '0':
@@ -332,14 +331,14 @@ struct structural_parser {
     parser.current_loc = 0;
   }
 
-  WARN_UNUSED really_inline error_code start(size_t len, ret_address finish_state) {
+  WARN_UNUSED really_inline error_code start(size_t _len, ret_address finish_state) {
     log_start();
     init(); // sets is_valid to false
-    if (len > parser.capacity()) {
+    if (_len > parser.capacity()) {
       return CAPACITY;
     }
     // Advance to the first character as soon as possible
-    structurals.advance_char();
+    advance_char();
     // Push the root scope (there is always at least one scope)
     if (start_document(finish_state)) {
       return DEPTH_ERROR;
@@ -347,12 +346,8 @@ struct structural_parser {
     return SUCCESS;
   }
 
-  really_inline char advance_char() {
-    return structurals.advance_char();
-  }
-
   really_inline void log_value(const char *type) {
-    logger::log_line(structurals, "", type, "");
+    logger::log_line(*this, "", type, "");
   }
 
   static really_inline void log_start() {
@@ -360,17 +355,17 @@ struct structural_parser {
   }
 
   really_inline void log_start_value(const char *type) {
-    logger::log_line(structurals, "+", type, "");
+    logger::log_line(*this, "+", type, "");
     if (logger::LOG_ENABLED) { logger::log_depth++; }
   }
 
   really_inline void log_end_value(const char *type) {
     if (logger::LOG_ENABLED) { logger::log_depth--; }
-    logger::log_line(structurals, "-", type, "");
+    logger::log_line(*this, "-", type, "");
   }
 
   really_inline void log_error(const char *error) {
-    logger::log_line(structurals, "", "ERROR", error);
+    logger::log_line(*this, "", "ERROR", error);
   }
 };
 
@@ -394,7 +389,7 @@ WARN_UNUSED error_code dom_parser_implementation::stage2(dom::document &_doc) no
   //
   // Read first value
   //
-  switch (parser.structurals.current_char()) {
+  switch (parser.current_char()) {
   case '{':
     FAIL_IF( parser.start_object(addresses.finish) );
     goto object_begin;
@@ -410,14 +405,14 @@ WARN_UNUSED error_code dom_parser_implementation::stage2(dom::document &_doc) no
   case '0': case '1': case '2': case '3': case '4':
   case '5': case '6': case '7': case '8': case '9':
     FAIL_IF(
-      parser.structurals.with_space_terminated_copy([&](const uint8_t *copy, size_t idx) {
+      parser.with_space_terminated_copy([&](const uint8_t *copy, size_t idx) {
         return parser.parse_number(&copy[idx], false);
       })
     );
     goto finish;
   case '-':
     FAIL_IF(
-      parser.structurals.with_space_terminated_copy([&](const uint8_t *copy, size_t idx) {
+      parser.with_space_terminated_copy([&](const uint8_t *copy, size_t idx) {
         return parser.parse_number(&copy[idx], true);
       })
     );
