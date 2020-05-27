@@ -19,7 +19,7 @@ struct streaming_structural_parser: structural_parser {
 
   // override to add streaming
   WARN_UNUSED really_inline error_code finish() {
-    if ( past_end(parser.n_structural_indexes) ) {
+    if ( past_end() ) {
       log_error("IMPOSSIBLE: past the end of the JSON!");
       return TAPE_ERROR;
     }
@@ -32,7 +32,7 @@ struct streaming_structural_parser: structural_parser {
       log_error("IMPOSSIBLE: root scope tape index did not start at 0!");
       return TAPE_ERROR;
     }
-    bool finished = at_end(parser.n_structural_indexes);
+    bool finished = at_end();
     if (!finished) { log_value("(and has more)"); }
     return finished ? SUCCESS : SUCCESS_AND_HAS_MORE;
   }

@@ -268,7 +268,7 @@ struct structural_parser : structural_iterator {
 
   WARN_UNUSED really_inline error_code finish() {
     // the string might not be NULL terminated.
-    if ( !at_end(parser.n_structural_indexes) ) {
+    if ( !at_end() ) {
       log_error("More than one JSON value at the root of the document, or extra characters at the end of the JSON!");
       return TAPE_ERROR;
     }
