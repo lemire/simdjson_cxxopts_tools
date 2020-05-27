@@ -52,21 +52,21 @@ struct number_writer {
   
   really_inline void write_s64(int64_t value) noexcept {
     append_tape(0, internal::tape_type::INT64);
-    std::memcpy(&parser.doc->tape[parser.current_loc], &value, sizeof(value));
+    std::memcpy(&parser.tape[parser.current_loc], &value, sizeof(value));
     ++parser.current_loc;
   }
   really_inline void write_u64(uint64_t value) noexcept {
     append_tape(0, internal::tape_type::UINT64);
-    parser.doc->tape[parser.current_loc++] = value;
+    parser.tape[parser.current_loc++] = value;
   }
   really_inline void write_double(double value) noexcept {
     append_tape(0, internal::tape_type::DOUBLE);
-    static_assert(sizeof(value) == sizeof(parser.doc->tape[parser.current_loc]), "mismatch size");
-    memcpy(&parser.doc->tape[parser.current_loc++], &value, sizeof(double));
-    // doc->tape[doc->current_loc++] = *((uint64_t *)&d);
+    static_assert(sizeof(value) == sizeof(parser.tape[parser.current_loc]), "mismatch size");
+    memcpy(&parser.tape[parser.current_loc++], &value, sizeof(double));
+    // tape[doc->current_loc++] = *((uint64_t *)&d);
   }
   really_inline void append_tape(uint64_t val, internal::tape_type t) noexcept {
-    parser.doc->tape[parser.current_loc++] = val | ((uint64_t(char(t))) << 56);
+    parser.tape[parser.current_loc++] = val | ((uint64_t(char(t))) << 56);
   }
 }; // struct number_writer
 
@@ -109,7 +109,7 @@ struct structural_parser : structural_iterator {
   // this function is responsible for annotating the start of the scope
   really_inline void end_scope(internal::tape_type start, internal::tape_type end) noexcept {
     depth--;
-    // write our doc->tape location to the header scope
+    // write our tape location to the header scope
     // The root scope gets written *at* the previous location.
     append_tape(parser.containing_scope[depth].tape_index, end);
     // count can overflow if it exceeds 24 bits... so we saturate
@@ -117,7 +117,7 @@ struct structural_parser : structural_iterator {
     const uint32_t start_tape_index = parser.containing_scope[depth].tape_index;
     const uint32_t count = parser.containing_scope[depth].count;
     const uint32_t cntsat = count > 0xFFFFFF ? 0xFFFFFF : count;
-    // This is a load and an OR. It would be possible to just write once at doc->tape[d.tape_index]
+    // This is a load and an OR. It would be possible to just write once at tape[d.tape_index]
     write_tape(start_tape_index, parser.current_loc | (uint64_t(cntsat) << 32), start);
   }
 
@@ -135,11 +135,11 @@ struct structural_parser : structural_iterator {
   }
 
   really_inline void append_tape(uint64_t val, internal::tape_type t) noexcept {
-    parser.doc->tape[parser.current_loc++] = val | ((uint64_t(char(t))) << 56);
+    parser.tape[parser.current_loc++] = val | ((uint64_t(char(t))) << 56);
   }
 
   really_inline void write_tape(uint32_t loc, uint64_t val, internal::tape_type t) noexcept {
-    parser.doc->tape[loc] = val | ((uint64_t(char(t))) << 56);
+    parser.tape[loc] = val | ((uint64_t(char(t))) << 56);
   }
 
   // increment_count increments the count of keys in an object or values in an array.
@@ -152,7 +152,7 @@ struct structural_parser : structural_iterator {
 
   really_inline uint8_t *on_start_string() noexcept {
     // we advance the point, accounting for the fact that we have a NULL termination
-    append_tape(current_string_buf_loc - parser.doc->string_buf.get(), internal::tape_type::STRING);
+    append_tape(current_string_buf_loc - parser.string_buf, internal::tape_type::STRING);
     return current_string_buf_loc + sizeof(uint32_t);
   }
 
@@ -326,7 +326,7 @@ struct structural_parser : structural_iterator {
   }
 
   really_inline void init() {
-    current_string_buf_loc = parser.doc->string_buf.get();
+    current_string_buf_loc = parser.string_buf;
     parser.current_loc = 0;
   }
 
@@ -379,7 +379,8 @@ struct structural_parser : structural_iterator {
  * for documentation.
  ***********/
 WARN_UNUSED error_code dom_parser_implementation::stage2(dom::document &_doc) noexcept {
-  this->doc = &_doc;
+  this->tape = _doc.tape.get();
+  this->string_buf = _doc.string_buf.get();
   static constexpr stage2::unified_machine_addresses addresses = INIT_ADDRESSES();
   stage2::structural_parser parser(*this);
   error_code result = parser.start(addresses.finish);

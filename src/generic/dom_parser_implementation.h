@@ -8,8 +8,10 @@ public:
   const uint8_t *buf;
   /** Length passed to stage 1 */
   size_t len;
-  /** Document passed to stage 2 */
-  dom::document *doc;
+  /** Tape from document passed to stage 2 */
+  uint64_t *tape;
+  /** String buffer from document passed to stage 2 */
+  uint8_t *string_buf;
 
   really_inline dom_parser_implementation();
   
